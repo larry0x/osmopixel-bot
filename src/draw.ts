@@ -82,41 +82,46 @@ async function waitForBlocks(client: SigningStargateClient, startFrom: number, w
     signer,
   });
 
-  for (let i = START[0]; i < viewport.x; i++) {
-    for (let j = START[1]; j < viewport.y; j++) {
-      const x = ORIGIN[0] + i;
-      const y = ORIGIN[1] + j;
-      const color = pixels[i][j];
-      console.log(`x = ${x}, y = ${y}, color = ${color}`)
+  while(true) {
+    for (let i = START[0]; i < viewport.x; i++) {
+      for (let j = START[1]; j < viewport.y; j++) {
+        const x = ORIGIN[0] + i;
+        const y = ORIGIN[1] + j;
+        const color = pixels[i][j];
+        console.log(`x = ${x}, y = ${y}, color = ${color}`)
 
-      if (await osmosisPixel.isColor({'x': x.toString(), 'y': y.toString()}, color)) {
-        console.log(`Pixel ${x},${y} is already ${color}`);
-        continue;
+        if (await osmosisPixel.isColor({'x': x.toString(), 'y': y.toString()}, color)) {
+          console.log(`Pixel ${x},${y} is already ${color}`);
+          continue;
+        }
+
+        const msg = {
+          typeUrl: "/cosmos.bank.v1beta1.MsgSend",
+          value: MsgSend.fromPartial({
+            fromAddress: signerAddress,
+            toAddress: signerAddress,
+            amount: [{ denom: "uosmo", amount: "1" }],
+          }),
+        };
+
+        const memo = `osmopixel (${x},${y},${color})`;
+
+        const { height, transactionHash } = await client.signAndBroadcast(
+            signerAddress,
+            [msg],
+            {
+              gas: "200000",
+              amount: [],
+            },
+            memo
+        );
+        console.log(`Broadcasted! height = ${height}, txhash = ${transactionHash}`);
+
+        await waitForBlocks(client, height, 30);
       }
-
-      const msg = {
-        typeUrl: "/cosmos.bank.v1beta1.MsgSend",
-        value: MsgSend.fromPartial({
-          fromAddress: signerAddress,
-          toAddress: signerAddress,
-          amount: [{ denom: "uosmo", amount: "1" }],
-        }),
-      };
-
-      const memo = `osmopixel (${x},${y},${color})`;
-
-      const { height, transactionHash } = await client.signAndBroadcast(
-        signerAddress,
-        [msg],
-        {
-          gas: "200000",
-          amount: [],
-        },
-        memo
-      );
-      console.log(`Broadcasted! height = ${height}, txhash = ${transactionHash}`);
-
-      await waitForBlocks(client, height, 30);
     }
+
+    console.log('==== Completed! Protecting in 10 seconds ====')
+    await sleep(10000);
   }
 })();

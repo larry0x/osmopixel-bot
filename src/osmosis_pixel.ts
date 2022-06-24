@@ -1,18 +1,27 @@
 import axios from "axios";
 
+const cache = require('node-file-cache').create({file: '../data'});
+
 export type PixelCoords = {
     x: string,
     y: string
 }
 
 async function getCurrentPixels() {
-    return axios.get("https://pixels-osmosis.keplr.app/pixels", {
-        headers: {
-            "Content-Type": "application/json",
-        },
-    }).then(function (response) {
-        return response.data;
-    });
+    if (null === cache.get('osmosis_pixels')) {
+        console.log('Fetching pixels from osmosis...');
+        const osmosisPixels = await axios.get("https://pixels-osmosis.keplr.app/pixels", {
+            headers: {
+                "Content-Type": "application/json",
+            },
+        }).then(function (response) {
+            return response.data;
+        });
+
+        cache.set('osmosis_pixels', osmosisPixels, {life: 5}); // 5 seconds
+    }
+
+    return cache.get('osmosis_pixels')
 }
 
 export async function isColor(pixelCoords: PixelCoords, colourCode: number) {

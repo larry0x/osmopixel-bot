@@ -8,6 +8,7 @@ import { getSigningOsmosisClient } from 'osmojs';
 import { MsgSend } from "cosmjs-types/cosmos/bank/v1beta1/tx";
 
 import * as keystore from "./keystore";
+import * as osmosisPixel from "./osmosis_pixel";
 
 type ArtData = {
   viewport: {
@@ -18,10 +19,10 @@ type ArtData = {
 };
 
 const { viewport, pixels }: ArtData = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "../data/larry.json"), "utf8")
+  fs.readFileSync(path.join(__dirname, "../data/tedcrypto.json"), "utf8")
 );
 
-const ORIGIN = [45, 65];
+const ORIGIN = [70, 70];
 const START = [0, 0];
 
 async function sleep(ms: number) {
@@ -32,10 +33,20 @@ async function sleep(ms: number) {
 async function waitForBlocks(client: SigningStargateClient, startFrom: number, waitFor = 30) {
   console.log(`Starting from ${startFrom}, waiting for ${waitFor} blocks`)
   while (true) {
-    const height = await client.getHeight();
-    console.log("Current height:", height);
+    let height = null;
+    while (!height) {
+      try {
+        height = await client.getHeight();
+      } catch (exception) {
+        console.log('Problem fetching the height... Trying again in few seconds')
+        await sleep(10000)
+      }
+    }
 
-    if (height > startFrom + waitFor) {
+    const heightWanted = startFrom + waitFor;
+    console.log("Current height:", height, " Height wanted:", heightWanted, " Difference:", heightWanted - height);
+
+    if (height > heightWanted) {
       return;
     }
 
@@ -64,9 +75,10 @@ async function waitForBlocks(client: SigningStargateClient, startFrom: number, w
     ],
   });
   const signerAddress = (await signer.getAccounts())[0].address;
+  console.log('Wallet address:', signerAddress);
 
   const client = await getSigningOsmosisClient({
-    rpcEndpoint: "https://rpc.osmosis.zone/",
+    rpcEndpoint: "https://rpc-osmosis.blockapsis.com/",
     signer,
   });
 
@@ -76,6 +88,11 @@ async function waitForBlocks(client: SigningStargateClient, startFrom: number, w
       const y = ORIGIN[1] + j;
       const color = pixels[i][j];
       console.log(`x = ${x}, y = ${y}, color = ${color}`)
+
+      if (await osmosisPixel.isColor({'x': x.toString(), 'y': y.toString()}, color)) {
+        console.log(`Pixel ${x},${y} is already ${color}`);
+        continue;
+      }
 
       const msg = {
         typeUrl: "/cosmos.bank.v1beta1.MsgSend",

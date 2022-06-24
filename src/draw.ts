@@ -22,7 +22,7 @@ const { viewport, pixels }: ArtData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../data/tedcrypto.json"), "utf8")
 );
 
-const ORIGIN = [70, 70];
+const ORIGIN = [71, 71];
 const START = [0, 0];
 
 async function sleep(ms: number) {
@@ -83,10 +83,10 @@ async function waitForBlocks(client: SigningStargateClient, startFrom: number, w
   });
 
   while(true) {
-    for (let i = START[0]; i < viewport.x; i++) {
-      for (let j = START[1]; j < viewport.y; j++) {
-        const x = ORIGIN[0] + i;
-        const y = ORIGIN[1] + j;
+    for (let i = START[0]; i < viewport.y; i++) {
+      for (let j = START[1]; j < viewport.x; j++) {
+        const x = ORIGIN[0] + j - 1;
+        const y = ORIGIN[1] + i - 1;
         const color = pixels[i][j];
         console.log(`x = ${x}, y = ${y}, color = ${color}`)
 
@@ -116,6 +116,7 @@ async function waitForBlocks(client: SigningStargateClient, startFrom: number, w
             memo
         );
         console.log(`Broadcasted! height = ${height}, txhash = ${transactionHash}`);
+        console.log('https://app.osmosis.zone/pixels?x='+(x + 1)+'&y='+(y + 1)+'&color='+color);
 
         await waitForBlocks(client, height, 30);
       }
